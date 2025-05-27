@@ -329,6 +329,14 @@ int main()
                         game_boy_emulator.set_post_boot_state();
                         set_emulation_screen_blank(abgr_pixel_buffer.get(), sdl_texture.get());
                     }
+                    if (ImGui::MenuItem("Enable Logging"))
+                    {
+                        game_boy_emulator.enable_logging();
+                    }
+                    if (ImGui::MenuItem("Disable Logging"))
+                    {
+                        game_boy_emulator.disable_logging();
+                    }
                     if (ImGui::MenuItem("Reset", "", false, game_boy_emulator.is_game_rom_loaded_in_memory_thread_safe()))
                     {
                         if (game_boy_emulator.is_bootrom_loaded_in_memory_thread_safe())

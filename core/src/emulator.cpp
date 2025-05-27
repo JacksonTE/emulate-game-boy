@@ -17,6 +17,16 @@ Emulator::Emulator()
 {
 }
 
+void Emulator::enable_logging()
+{
+    central_processing_unit.log_flag.store(true, std::memory_order_release);
+}
+
+void Emulator::disable_logging()
+{
+    central_processing_unit.log_flag.store(false, std::memory_order_release);
+}
+
 void Emulator::reset_state(bool should_add_startup_machine_cycle)
 {
     internal_timer.reset_state();
@@ -110,6 +120,9 @@ void Emulator::step_central_processing_unit_single_instruction()
 
 void Emulator::step_components_single_machine_cycle_to_sync_with_central_processing_unit()
 {
+    central_processing_unit.m_cycle_count++;
+    if (central_processing_unit.m_cycle_count == 27955213)
+        auto x = 2;
     internal_timer.step_single_machine_cycle();
     pixel_processing_unit.step_single_machine_cycle();
     memory_management_unit->step_single_machine_cycle();

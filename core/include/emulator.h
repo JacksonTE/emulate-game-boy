@@ -16,6 +16,9 @@ class Emulator
 public:
     Emulator();
 
+    void enable_logging();
+    void disable_logging();
+
     void reset_state(bool should_add_startup_machine_cycle);
     void set_post_boot_state();
     

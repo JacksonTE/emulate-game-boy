@@ -160,12 +160,6 @@ bool MemoryManagementUnit::is_game_rom_loaded_thread_safe() const
 
 uint8_t MemoryManagementUnit::read_byte(uint16_t address, bool is_access_for_oam_dma) const
 {
-    if (pixel_processing_unit.is_oam_dma_in_progress && !is_access_for_oam_dma && are_addresses_on_same_bus(address, oam_dma_source_address_base))
-    {
-        const uint16_t oam_dma_byte_to_transfer_address = oam_dma_source_address_base + oam_dma_machine_cycles_elapsed;
-        address = oam_dma_byte_to_transfer_address;
-    }
-
     if (bootrom_status == 0 && address < BOOTROM_SIZE)
     {
         if (bootrom == nullptr)
@@ -242,6 +236,10 @@ uint8_t MemoryManagementUnit::read_byte(uint16_t address, bool is_access_for_oam
 
                 if ((res & 0x0f) == 0)
                     std::cout << "resetting from input\n";
+                if (is_select_buttons_enabled && !is_flag_set(res, (uint8_t)0b00001000))
+                    std::cout << "start press registered\n";
+                if (is_select_directional_pad_enabled && !is_flag_set(res, (uint8_t)0b00001000))
+                    std::cout << "start press registered\n";
 
                 return res;
             }

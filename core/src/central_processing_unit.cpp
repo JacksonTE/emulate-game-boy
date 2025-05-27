@@ -109,12 +109,21 @@ void CentralProcessingUnit::step_single_instruction()
         emulator_step_single_machine_cycle_callback(MachineCycleOperation{MemoryInteraction::None});
     else
     {
+        std::cout << std::hex << std::setfill('0');
         if (is_current_instruction_prefixed)
         {
+            if (log_flag.load(std::memory_order_acquire))
+            {
+                std::cout << std::setw(2) << (int)instruction_register_ir << " " << prefixed_instruction_mnemonics[instruction_register_ir] << "\n";
+            }
             decode_current_prefixed_opcode_and_execute();
         }
         else
         {
+            if (log_flag.load(std::memory_order_acquire))
+            {
+                std::cout << std::setw(2) << (int)instruction_register_ir << " " << instruction_mnemonics[instruction_register_ir] << "\n";
+            }
             decode_current_unprefixed_opcode_and_execute();
         }
         fetch_next_instruction();
@@ -127,6 +136,14 @@ void CentralProcessingUnit::step_single_instruction()
 
 void CentralProcessingUnit::fetch_next_instruction()
 {
+    if (log_flag.load(std::memory_order_acquire))
+    {
+        std::cout << std::dec;
+        std::cout << "Cycle " << m_cycle_count << ": ";
+        std::cout << std::hex << std::setfill('0');
+        std::cout << "(" << std::setw(4) << register_file.program_counter << ") ";
+        last_pc = register_file.program_counter;
+    }
     const uint8_t immediate8 = fetch_immediate8_and_step_emulator_components();
     is_current_instruction_prefixed = (immediate8 == INSTRUCTION_PREFIX_BYTE);
 
@@ -161,6 +178,16 @@ void CentralProcessingUnit::service_interrupt()
     write_byte_and_step_emulator_components(register_file.stack_pointer--, register_file.program_counter >> 8);
     uint8_t interrupt_flag_mask = memory_management_unit.get_pending_interrupt_mask();
     write_byte_and_step_emulator_components(register_file.stack_pointer, register_file.program_counter & 0xff);
+    
+    if (log_flag.load(std::memory_order_acquire))
+    {
+        std::cout << "interrupt with mask " << (int)interrupt_flag_mask
+                  << " pushes pc " << register_file.program_counter
+                  << " at sp " << register_file.stack_pointer << "\n";
+        
+        if (register_file.program_counter != last_pc)
+            auto x = 2;
+    }
 
     memory_management_unit.clear_interrupt_flag_bit(interrupt_flag_mask);
     interrupt_master_enable_ime = InterruptMasterEnableState::Disabled;
@@ -222,6 +249,26 @@ void CentralProcessingUnit::decode_current_unprefixed_opcode_and_execute()
 {
     const uint8_t destination_register_index = ((instruction_register_ir >> 3) & 0b111);
     const uint8_t source_register_index = (instruction_register_ir & 0b111);
+
+    if ((opcodes.insert(instruction_register_ir)).second)
+    {
+        std::cout << "instruction added: " << (int)instruction_register_ir << "\n";
+        if (instruction_register_ir == 0xda)
+        {
+            log_flag.store(true, std::memory_order_release);
+        }
+    }
+
+    if (instruction_register_ir == 0x90)
+        auto x = 2;
+    if (opcodes.size() == 0x8a)
+    {
+        for (uint8_t value : opcodes)
+        {
+            std::cout << static_cast<int>(value) << '\n';
+        }
+        auto x = 2;
+    }
 
     switch (instruction_register_ir)
     {
@@ -751,6 +798,8 @@ void CentralProcessingUnit::decode_current_prefixed_opcode_and_execute()
 {
     const uint8_t destination_register_index = (instruction_register_ir & 0b111);
     const uint8_t bit_position = ((instruction_register_ir >> 3) & 0b111);
+
+    prefixed_opcodes.insert(instruction_register_ir);
 
     switch (instruction_register_ir)
     {
@@ -1475,6 +1524,11 @@ void CentralProcessingUnit::return_0xc9()
 void CentralProcessingUnit::return_from_interrupt_0xd9()
 {
     return_0xc9();
+    if (log_flag.load(std::memory_order_acquire))
+    {
+        std::cout << "returned from interrupt "
+            << " popped pc: " << register_file.program_counter << "\n";
+    }
     interrupt_master_enable_ime = InterruptMasterEnableState::Enabled;
 }
 
